@@ -17,17 +17,7 @@ if not os.path.isfile('.led'):
 def timestamp():
     return strftime("%d %b %Y %H:%M:%S", localtime())
 
-with open("camconfig.conf", "r") as file:
-    conffile = file.read().split('\n')
-config = {}
-for i in conffile:
-    if i.startswith('record_dir'):
-        config['record_dir'] = i[11:]
-    else:
-        if i!= '':
-            j = i.split(' ')
-            config[j[0]] = j[1]
-serialdevice = config['serial_device']
+serialdevice = "/dev/ttyUSB0"
 
 try:
     ser = serial.Serial(

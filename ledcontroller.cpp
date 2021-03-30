@@ -74,30 +74,38 @@ int main() {
         ledc = ReadTextFile(ledfile);
         
         if (ledc[0]== '1' and lastled!=1) {
-            lastled = 1;
-            my_serial_port.Write("1\0");
-            cout << "Led Off" << endl;
+            try:
+                lastled = 1;
+                my_serial_port.Write("1\0");
+                cout << "Led Off" << endl;
+            catch(const std::runtime_error& re) {cout << "Serial Error" << endl;}
         }
         else if (ledc[0]== '2' and lastled!=2) {
-            lastled = 2;
-            my_serial_port.Write("2\0");
-            cout << "Led On" << endl;
+            try:
+                lastled = 2;
+                my_serial_port.Write("2\0");
+                cout << "Led On" << endl;
+            catch(const std::runtime_error& re) {cout << "Serial Error" << endl;}
         }
         else if (ledc[0]== '3' and lastled!=3) {
-            lastled = 3;
-            my_serial_port.Write("3\0");
-            cout << "Led Flash" << endl;
+            try:
+                lastled = 3;
+                my_serial_port.Write("3\0");
+                cout << "Led Flash" << endl;
+            catch(const std::runtime_error& re) {cout << "Serial Error" << endl;}
         }
         else {
-            lastled = 1;
-            my_serial_port.Write("1\0");
-            cout << "Led Off Undefined" << endl;
+            try:
+                lastled = 1;
+                my_serial_port.Write("1\0");
+                cout << "Led Off Undefined" << endl;
+            catch(const std::runtime_error& re) {cout << "Serial Error" << endl;}
         }
-            
-        
     }
         
     my_serial_port.Write("1\0");
     my_serial_port.Close();
+    cout << "Serial port closed" << endl;
+    return 0;
 
 }

@@ -3,8 +3,6 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <iostream>
 #include <cstdlib>
-#include <math.h>
-#include <fstream>
 #include <fmt/core.h>
 #include <fmt/format.h>
 #include "camconfig.h"
@@ -21,7 +19,7 @@ int main(int argc, char* argv[]) {
     if (argc > 1) {cmdvid = true;}
 
     srand(time(0));
-    char v[] = "1.2";
+    char v[] = "1.0";
     const char* configfile = "cam.cfg";
     const int confalert = 3;
     const int record_tconf = 4;
@@ -54,13 +52,12 @@ int main(int argc, char* argv[]) {
         camvars.Load(configfile);
 
         int cam_id;
-        if (cmdvid) {
-            camvars.internet_cam_url = argv[1];
-        }
+        if (cmdvid) { camvars.internet_cam_url = argv[1]; }
+        else { camvars.internet_cam_url = camvars.cam_urls[0]; }
         
         cam_id = 0;
         for (int n = 0; n < 4; ++n) {
-            if (camvars.internet_cam_url == camvars.cam_urls[n]) { cam_id = n; }
+            if (camvars.internet_cam_url == camvars.cam_urls[n]) { cam_id = n+1; }
         }
         if (cam_id!=0 and cam_id<=4) {camvars.zone = camvars.cam_zones[cam_id-1];}
         
@@ -171,7 +168,6 @@ int main(int argc, char* argv[]) {
                         }
                     }
                 };
-                
                 
                 tracks_n = 0;
                 int tconf;

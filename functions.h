@@ -69,8 +69,7 @@ namespace CamFunctions {
         zone.height = rectangle.height / md_scale;
         cout << "Set zone: " << zone.x << ", " << zone.y << ", " << zone.height << ", " << zone.width << endl;
     }
-
-    /*
+    
     cv::Point reframe_pos(int x, int y, double md_scale, cv::Rect zone) {
         int X;
         int Y;
@@ -85,8 +84,7 @@ namespace CamFunctions {
         cv::Point point(X,Y);
         return point;
     }
-    */
-
+    
     cv::Rect scale_rect( cv::Rect rectangle, double md_scale, cv::Rect zone) {
         const int x = rectangle.x;
         const int y = rectangle.y;
