@@ -46,6 +46,8 @@ int main(int argc, char* argv[]) {
     cv::VideoCapture cap;
     CamConfig camvars;
     
+    // 2560 * 1920
+    
     cout << "WatchCam " << v << " started " << timestamp() << endl;
     
     try {
@@ -82,13 +84,16 @@ int main(int argc, char* argv[]) {
         notif(fmt::format("Frame width: {} Frame height: {}",frame_width,frame_height),cam_id);
         if (camvars.resize_display) {cv::resizeWindow(windowname, camvars.windowres.width, camvars.windowres.height);}
         else {cv::resizeWindow(windowname, frame_width, frame_height);}
+        int md_scale_width = frame_width / camvars.motionimgres.width;
+        int md_scale_height = frame_height / camvars.motionimgres.height;
+        if (md_scale_width == md_scale_height) {camvars.md_scale = md_scale_width;}
         
-        //bool big = frame_width > 640;
-        int new_width = frame_width / camvars.md_scale;
-        int new_height = frame_height / camvars.md_scale;
+        bool big_image = frame_width > 640;
+        //int new_width = frame_width / camvars.md_scale;
+        //int new_height = frame_height / camvars.md_scale;
         cv::Size new_size;
-        new_size.width = new_width;
-        new_size.height= new_height;
+        new_size.width = camvars.motionimgres.width;
+        new_size.height= camvars.motionimgres.height;
         
         TrackObject tracks[32];
         
@@ -184,9 +189,9 @@ int main(int argc, char* argv[]) {
                         
                         if (tconf >=3 ) {tracks_n+=1;} //3
                     
-                        int rsize;
-                        cv::Scalar color;
-                        cv::Scalar ccolor;
+                        int rsize = 1;
+                        cv::Scalar color = cv::Scalar(0,255,0);
+                        cv::Scalar ccolor = cv::Scalar(0,255,0);
                         
                         if (tconf == 1) {
                             color = cv::Scalar(255,0,0);
@@ -258,17 +263,18 @@ int main(int argc, char* argv[]) {
             }
             
             if (camvars.serial_alert) {
+                cv::putText(feed, "A", cv::Point(int(frame_width*0.95), int(frame_height*0.975)), cv::FONT_HERSHEY_PLAIN, 2, cv::Scalar(0,255,0), 2);
                 if (maxconf<=1 and led!=1) {
                     led = 1;
-                    WriteTextFile(".led","1");
+                    WriteTextFile(".led",fmt::format("1:{}",cam_id));
                 }
                 else if (maxconf < 4 and maxconf >1 and led!=2) {
                     led = 2;
-                    WriteTextFile(".led","2");
+                    WriteTextFile(".led",fmt::format("2:{}",cam_id));
                 }
                 else if (maxconf >= 4 and led!=3) {
                     led = 3;
-                    WriteTextFile(".led","3");
+                    WriteTextFile(".led",fmt::format("3:{}",cam_id));
                 }
             }
             
@@ -343,6 +349,13 @@ int main(int argc, char* argv[]) {
                 
             if (c == 115) { //s
                 camvars.alert_sound = not camvars.alert_sound;
+            } 
+            if (c == 97) { //a
+                camvars.serial_alert = not camvars.serial_alert;
+                if (not camvars.serial_alert) {
+                    led = 1;
+                    WriteTextFile(".led",fmt::format("1:{}",cam_id));
+                }
             } 
             if (c == 99) {  //c
                 camvars.zone.x = 0;

@@ -58,7 +58,7 @@ namespace TrackObjectClass {
                 confidence = 0;
                 sizes.push_back(contourArea(contour));
                 ratio = 0;
-                ratios.push_back((double)rect.width / (double)rect.height);
+                ratios.push_back((double)rect.width / rect.height);
             };
             
             void update(Contour contour, CamConfig& camvars) {
@@ -77,10 +77,10 @@ namespace TrackObjectClass {
                 arect.width = wavg;
                 arect.height = havg;
                 sizes.push_back(contourArea(contour));
-                ratios.push_back((double)rect.width / (double)rect.height);
+                ratios.push_back((double)rect.width / rect.height);
                 vel = round(vectorAverage(vels));
                 size = round(vectorAverage(sizes));
-                ratio = round(vectorAverage(ratios));
+                ratio = round((vectorAverage(ratios)*100)/100);
                 updates = updates + 1;
                 
                 if (updates>=25 and confidence<4 and classification!="UNKNOWN") {confidence = 4;}
@@ -89,8 +89,8 @@ namespace TrackObjectClass {
                 else if (updates > 4 and confidence==0) {confidence = 1;}
                 
                 if (confidence >= 3) {
-                    if (ratio > 1 and size > 800) {classification = "VEHICLE";}
-                    else if (ratio < 1 and size < 800 and size > 100 /*and vel < 25*/) { classification = "PERSON";}
+                    if ((rect.height < rect.width)  and size > 800) {classification = "VEHICLE";}
+                    else if ((rect.height > rect.width) and size < 800 and size > 100 /*and vel < 25*/) { classification = "PERSON";}
                     else {classification = "UNKNOWN";}
                     
                     if (classification == "UNKNOWN" and confidence == 4) {confidence = 3;}
