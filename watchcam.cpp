@@ -217,7 +217,7 @@ int main(int argc, char* argv[]) {
                         rectangle(feed, cv::Point(x,y), cv::Point(x+w, y+h), color, rsize);
                         cv::putText(feed, id, cv::Point(x, y-1), cv::FONT_HERSHEY_PLAIN, 1, color, 1);
                         cv::putText(feed, tracking[id].classification, cv::Point(x, y+h+11), cv::FONT_HERSHEY_PLAIN, 1, color, 1);
-                        circle(feed, tracking[id].center, 1, ccolor, 2);   
+                        //circle(feed, tracking[id].center, 1, ccolor, 2);   
                     }
                     
                     if (time(0) > (tracking[id].time + camvars.tracktimes[tconf])) {

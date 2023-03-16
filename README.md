@@ -5,7 +5,7 @@ Contour-based OpenCV security system. Ported from Python 2 to C++ for a 10x CPU 
 Has a simple arduino connection that makes a led illuminate or flash depending on the tracked object. You could use that as base for more advanced alerts like a siren, radio beeper, security drones or heat-seeking missiles or whatever.
 
 ### Config file
-Support for 4 cams for now<br>
+Support for 4 cams for now
 Important variables for motion algorithm:
 - min_contour_size
 - binarize_threshold

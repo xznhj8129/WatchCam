@@ -1,8 +1,8 @@
 pkg-config --cflags --libs opencv
 
-g++ watchcam.cpp -o watchcam -lconfig++ -lfmt -I/usr/include/opencv4 -lopencv_video -lopencv_text -lopencv_highgui -lopencv_videoio -lopencv_imgcodecs -lopencv_core -lopencv_imgproc -Wall -O0 -O1 -O2 -O3
+g++ watchcam.cpp -o watchcam -lconfig++ -lfmt -I/usr/include/opencv4 -lopencv_video -lopencv_text -lopencv_highgui -lopencv_videoio -lopencv_imgcodecs -lopencv_core -lopencv_imgproc -Wall -Ofast
 
-optimize: -O1 / -O2 / -O3
+optimize: -O1 / -O2 / -O3  / -Ofast
 
 g++ functions.h -c -lconfig++ -lfmt -I/usr/include/opencv4 -lopencv_video -lopencv_text -lopencv_highgui -lopencv_videoio -lopencv_imgcodecs -lopencv_core -lopencv_imgproc -Wall
 
