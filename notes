@@ -2,8 +2,28 @@ pkg-config --cflags --libs opencv
 
 g++ watchcam.cpp -o watchcam -lconfig++ -lfmt -I/usr/include/opencv4 -lopencv_video -lopencv_text -lopencv_highgui -lopencv_videoio -lopencv_imgcodecs -lopencv_core -lopencv_imgproc -Wall -Ofast
 
-optimize: -O1 / -O2 / -O3  / -Ofast
+optimize: -O1 / -O2 / -O3
 
 g++ functions.h -c -lconfig++ -lfmt -I/usr/include/opencv4 -lopencv_video -lopencv_text -lopencv_highgui -lopencv_videoio -lopencv_imgcodecs -lopencv_core -lopencv_imgproc -Wall
 
 g++ ledcontroller.cpp -o ledcontroller -lconfig++ -lfmt -I/usr/include/opencv4  -lopencv_core -I/usr/include/libserial -lserial -Wall
+
+
+for dnn: g++ -Ofast cpp/yolo.cpp -o yolo_example `pkg-config --cflags --libs opencv4`
+
+- FIX THE FUCKING SCALING
+- FIX THE FUCKING SCALING
+- FIX THE FUCKING SCALING
+- FIX THE FUCKING SCALING
+- FIX THE FUCKING SCALING
+- FIX THE FUCKING SCALING
+- FIX THE FUCKING SCALING
+- FIX THE FUCKING SCALING
+- FIX THE FUCKING SCALING
+- FIX THE FUCKING SCALING
+- FIX THE FUCKING SCALING
+- FIX THE FUCKING SCALING
+- FIX THE FUCKING SCALING
+- FIX THE FUCKING SCALING
+- FIX THE FUCKING SCALING
+- FIX THE FUCKING SCALING

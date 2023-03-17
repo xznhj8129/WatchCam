@@ -44,8 +44,6 @@ except Exception as e:
     exit(1)
 
 lastled = 1
-changetime = time.time()
-cam_priority = 0
 while 1:
     try:
         time.sleep(0.5)
@@ -53,10 +51,7 @@ while 1:
             exit(1)
         ledc = readfile(".led")
         if ledc == "": 
-            ledc="1:1"
-            
-        data = ledc.split(':')
-        
+            ledc="1"
         if (ledc[0] == "1") and lastled!= 1:
             try:
                 ser.write(b'1\0')
@@ -64,7 +59,6 @@ while 1:
                 print timestamp(), "Led Off"
             except serial.serialutil.SerialException:
                 pass
-                
         elif ledc[0] == "2" and lastled != 2:
             try:
                 ser.write(b'2\0')
@@ -72,7 +66,6 @@ while 1:
                 print timestamp(), "Led On"
             except serial.serialutil.SerialException:
                 pass
-                
         elif ledc[0] == "3" and lastled != 3:
             try:
                 ser.write(b'3\0')

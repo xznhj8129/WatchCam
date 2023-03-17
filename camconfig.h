@@ -36,6 +36,8 @@ namespace CamConfigClass {
             string cam_urls[8];
             cv::Rect cam_zones[8];
             double tracktimes[5];
+            bool yolo;
+            bool use_cuda;
             
             void Load(const char* filename) {
                 libconfig::Config config;
@@ -92,6 +94,9 @@ namespace CamConfigClass {
                     for (int n = 0; n < camzones.getLength(); ++n) {
                         cam_zones[n] = cv::Rect(camzones[n][0],camzones[n][1],camzones[n][2],camzones[n][3]);
                     }
+                    
+                    yolo = config.lookup("yolo");
+                    use_cuda = config.lookup("use_cuda");
                     
                     
                     

@@ -8,18 +8,22 @@
 #include "camconfig.h"
 #include "tracking.h"
 #include "functions.h"
+#include "yolo.h"
+#include "window.h"
 
 using namespace std;
 using namespace CamConfigClass;
 using namespace TrackObjectClass;
 using namespace CamFunctions;
+using namespace YoloDNNObjs;
+using namespace WindowClass;
     
 int main(int argc, char* argv[]) {
     bool cmdvid = false;
     if (argc > 1) {cmdvid = true;}
 
     srand(time(0));
-    char v[] = "1.0";
+    char v[] = "2.0";
     const char* configfile = "cam.cfg";
     const int confalert = 3;
     const int record_tconf = 4;
@@ -45,6 +49,8 @@ int main(int argc, char* argv[]) {
     TrackMap tracking;
     cv::VideoCapture cap;
     CamConfig camvars;
+    DNNdata dnndata;
+    Rect motionzone;
     
     // 2560 * 1920
     
@@ -52,6 +58,7 @@ int main(int argc, char* argv[]) {
     
     try {
         camvars.Load(configfile);
+        std::vector<std::string> class_list = load_class_list();
 
         int cam_id;
         if (cmdvid) { camvars.internet_cam_url = argv[1]; }
@@ -76,6 +83,7 @@ int main(int argc, char* argv[]) {
         string ip = camvars.internet_cam_url.substr (first+1,last-first-1);
         string windowname = fmt::format("WatchCam Feed Cam {} - {}",cam_id,ip);
         cv::namedWindow(windowname, cv::WINDOW_GUI_NORMAL);
+        cv::setMouseCallback(windowname, onMouse, NULL);
         
         // no cv::RectSelector???
         
@@ -89,11 +97,29 @@ int main(int argc, char* argv[]) {
         if (md_scale_width == md_scale_height) {camvars.md_scale = md_scale_width;}
         
         bool big_image = frame_width > 640;
-        //int new_width = frame_width / camvars.md_scale;
-        //int new_height = frame_height / camvars.md_scale;
+        
+        int new_width = frame_width / camvars.md_scale;
+        int new_height = frame_height / camvars.md_scale;
+        
         cv::Size new_size;
-        new_size.width = camvars.motionimgres.width;
-        new_size.height= camvars.motionimgres.height;
+        new_size.width = new_width; // resize size
+        new_size.height= new_height;
+        
+        sel_start_point.x = camvars.zone.x;
+        sel_start_point.y = camvars.zone.y;
+        sel_end_point.x = camvars.zone.width;
+        sel_end_point.y = camvars.zone.height;
+        motionzone.x = camvars.zone.x / camvars.md_scale;
+        motionzone.y = camvars.zone.y / camvars.md_scale;
+        motionzone.width = camvars.zone.width / camvars.md_scale;
+        motionzone.height = camvars.zone.height / camvars.md_scale;
+        
+        bool is_cuda = camvars.use_cuda;
+        
+        cv::dnn::Net net;
+        load_net(net, is_cuda);
+        dnndata.net = net;
+        dnndata.class_list = load_class_list();
         
         TrackObject tracks[32];
         
@@ -115,12 +141,18 @@ int main(int argc, char* argv[]) {
 
             cv::Mat p1;
             cv::Mat p2;
-            cv::resize(frame1, p1, new_size, 0, 0, cv::INTER_AREA);
+            cv::resize(frame1, p1, new_size, 0, 0, cv::INTER_AREA); // resize here
             cv::resize(frame2, p2, new_size, 0, 0, cv::INTER_AREA);
             
-            if (camvars.zone.height!=0 and camvars.zone.width!=0) { // crop shots to motion zone
-                p1 = p1(camvars.zone);
-                p2 = p2(camvars.zone);
+            if (motionzone.height!=0 and motionzone.width!=0) { // crop shots to detection zone
+                Rect motionzone_resized;
+                motionzone_resized.x = camvars.zone.x / camvars.md_scale;
+                motionzone_resized.y = camvars.zone.y / camvars.md_scale;
+                motionzone_resized.width = camvars.zone.width / camvars.md_scale;
+                motionzone_resized.height = camvars.zone.height / camvars.md_scale;
+                //cout << motionzone_resized <<endl;
+                p1 = p1(motionzone_resized);
+                p2 = p2(motionzone_resized);
             }
             
             absdiff(p1,p2, diff);
@@ -131,26 +163,28 @@ int main(int argc, char* argv[]) {
             findContours( dilated, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);//, cv::Point(0, 0) );
             
             if (calibrated) {
+                
                 for (const Contour &contour : contours) {
                     int csize = contourArea(contour);
                     if (csize >= camvars.min_contour_size) {
                         cv::Rect rect = cv::boundingRect(contour);
+                        //cv::Mat motionzone = 
                         //int x = rect.x;
                         //int y = rect.y;
                         //int w = rect.width;
                         //int h = rect.height;
                         cv::Point center = find_center(rect, camvars.md_scale, camvars.zone);
-                        cv::Rect scaled_rect = scale_rect(rect, camvars.md_scale, camvars.zone);
+                        cv::Rect scaled_rect = scale_rect(rect, camvars.md_scale, camvars.zone); // life sized
                         
                         //rectangle(feed, cv::Point(x*md_scale,y*md_scale), cv::Point((x+w)*md_scale,(y+h)*md_scale), cv::Scalar(0, 255, 0), 1);
                         //circle(feed, center, 1, cv::Scalar(0, 255, 0), 2);   
                         
                         tracked = 0;
-                        for (const auto &idpair : tracking) {
+                        for (const auto &idpair : tracking) { //check if contour is within any existing track
                             string id = idpair.first;
                             if (point_in_bounds(center, tracking[id].arect)) {
                                 
-                                tracking[id].update(contour, camvars);
+                                tracking[id].update(contour, camvars, feed, dnndata);
                                 tracked = 1;
                                 if (tracking[id].confidence >= confalert) {
                                     playalert = true;
@@ -185,9 +219,14 @@ int main(int argc, char* argv[]) {
                     const int w = tracking[id].arect.width;
                     const int h = tracking[id].arect.height;
                     tconf = tracking[id].confidence;
+                    
                     if (tconf >= 1) {
                         
                         if (tconf >=3 ) {tracks_n+=1;} //3
+                        
+                        //conf 1-2: general motion rectangle area box
+                        //conf 3: yellow box
+                        //conf 4: green classification confirmed box
                     
                         int rsize = 1;
                         cv::Scalar color = cv::Scalar(0,255,0);
@@ -222,19 +261,18 @@ int main(int argc, char* argv[]) {
                     
                     if (time(0) > (tracking[id].time + camvars.tracktimes[tconf])) {
                         if (tconf >=3) { //>=3
-                            notif(fmt::format("Track deleted: {} UPD: {} CONF: {} CLASS: {} VEL: {} SIZE: {} R: {} MAXCONF: {}",
+                            notif(fmt::format("Track deleted: {} UPD: {} CONF: {} CLASS: {} VEL: {} MAXCONF: {}",
                                 id,
                                 tracking[id].updates, 
                                 tracking[id].confidence, 
                                 tracking[id].classification,
                                 tracking[id].vel,
-                                tracking[id].size,
-                                tracking[id].ratio,
                                 maxconf), cam_id);
                         }
                         erasethese.push_back(id);
                     }
                     
+                    // overwrite overlapping track 
                     int cx1 = tracking[id].center.x;
                     int cy1 = tracking[id].center.y;
                     for (const auto &idpair2 : tracking) {
@@ -250,6 +288,7 @@ int main(int argc, char* argv[]) {
                     };
                     
                 };
+
                 for (const string id : erasethese) {
                     tracking.erase(id);
                 }
@@ -291,14 +330,12 @@ int main(int argc, char* argv[]) {
             if (vid_motion and not motion_notif) {
                 notif("Motion alert",cam_id);
                 motion_notif = true;
-                notif(fmt::format("Tracking: {} UPD: {} CONF: {} CLASS: {} VEL: {} SIZE: {} R: {} MAXCONF: {}",
+                notif(fmt::format("Tracking: {} UPD: {} CONF: {} CLASS: {} VEL: {} MAXCONF: {}",
                     alerttrack,
                     tracking[alerttrack].updates, 
                     tracking[alerttrack].confidence, 
                     tracking[alerttrack].classification,
                     tracking[alerttrack].vel,
-                    tracking[alerttrack].size,
-                    tracking[alerttrack].ratio,
                     maxconf), cam_id);
             }
             
@@ -307,14 +344,6 @@ int main(int argc, char* argv[]) {
                 if (camvars.alert_sound and playalert) {
                     notif("Play sound",cam_id);
                 }
-            }
-            
-            vidtime = timestamp();
-            
-            if (camvars.zone.width != 0) {
-                rectangle(feed, cv::Point(camvars.zone.x * camvars.md_scale, camvars.zone.y * camvars.md_scale), 
-                                cv::Point((camvars.zone.x + camvars.zone.width) * camvars.md_scale, (camvars.zone.y + camvars.zone.height) * camvars.md_scale), 
-                                cv::Scalar(0,0,255), 2);
             }
             
             if (camvars.record) {
@@ -332,15 +361,41 @@ int main(int argc, char* argv[]) {
                 cv::putText(feed, "SOUND", cv::Point(int(frame_width*0.01), int(frame_height*0.95)), cv::FONT_HERSHEY_SIMPLEX, 2, cv::Scalar(0,255,0), 2);
             }
             
-            if (camvars.resize_display) {
+            
+            
+            // Motion zone
+            if (camvars.zone.width != 0) {
+
+                cout << "main " << motionzone.x << " " << motionzone.y << " " << motionzone.width << " " << motionzone.height << endl;
+                //rectangle(feed, cv::Point(camvars.zone.x * camvars.md_scale, camvars.zone.y * camvars.md_scale), 
+                //                cv::Point((camvars.zone.x + camvars.zone.width) * camvars.md_scale, (camvars.zone.y + camvars.zone.height) * camvars.md_scale), 
+                
+                if (sel_drawing) {
+                    rectangle(feed, cv::Point(sel_start_point.x, sel_start_point.y), 
+                                    cv::Point(sel_end_point.x, sel_end_point.y),
+                                    cv::Scalar(0,0,255), 2);
+                }
+                else {
+                    rectangle(feed, cv::Point(motionzone.x * camvars.md_scale, motionzone.y * camvars.md_scale), 
+                                    cv::Point(motionzone.width * camvars.md_scale, motionzone.height * camvars.md_scale) ,
+                                    cv::Scalar(0,0,255), 2);
+                }
+            }
+            
+            if (camvars.resize_display) { // apply AFTER motion zone rect
                 cv::Size newwinsize;
                 newwinsize.width = camvars.windowres.width;
                 newwinsize.height = camvars.windowres.height;
                 cv::resize(feed, feed, newwinsize, 0, 0, cv::INTER_AREA);
             }
             
-            imshow( windowname, feed );
+            // update window
+            vidtime = timestamp();
+            updateZoomedImage(feed);
+            imshow( windowname, zoomedImg );
 
+
+            // key events
             int c = (char)cv::waitKey(1);
             if (c == 27) {
                 notif("WatchCam stopped",cam_id);
@@ -358,10 +413,10 @@ int main(int argc, char* argv[]) {
                 }
             } 
             if (c == 99) {  //c
-                camvars.zone.x = 0;
-                camvars.zone.y = 0;
-                camvars.zone.height = 0;
-                camvars.zone.width = 0;
+                motionzone.x = 0;
+                motionzone.y = 0;
+                motionzone.height = 0;
+                motionzone.width = 0;
             }
             if (c==101) { //e
                 if (not exclude_mode) {exclude_mode = true;}
@@ -380,6 +435,7 @@ int main(int argc, char* argv[]) {
                 TrackMap tracking;
             }
             
+            // next frame
             frame2 = frame1.clone();
             cap >> frame1;
             feed = frame1.clone();
