@@ -3,13 +3,11 @@
 #include <opencv2/core/mat.hpp>
 #include "camconfig.h"
 #include "functions.h"
-#include "yolo.h"
 
 using namespace std;
 using namespace cv;
 using namespace CamConfigClass;
 using namespace CamFunctions;
-using namespace YoloDNNObjs;
 
 #ifndef TRACKOBJ_H
 #define TRACKOBJ_H
@@ -37,7 +35,6 @@ namespace TrackObjectClass {
             bool initialized = false;
             std::vector<std::string> class_list;
             cv::dnn::Net net;
-            std::vector<Detection> yolo_detections;
             
             void track_init(Contour contour, CamConfig& camvars) {
                 initialized = true;
@@ -58,7 +55,7 @@ namespace TrackObjectClass {
                 confidence = 0;
             };
             
-            void update(Contour contour, CamConfig& camvars, cv::Mat feed, DNNdata dnndata) {
+            void update(Contour contour, CamConfig& camvars) {
                 time = std::time(0);
                 cv::Rect crect = cv::boundingRect(contour);
                 cv::Rect rect = scale_rect(crect, camvars.md_scale, camvars.zone);
@@ -75,15 +72,6 @@ namespace TrackObjectClass {
                 arect.height = havg;
                 vel = round(vectorAverage(vels));
                 updates = updates + 1;
-                
-                //detect(feed, dnndata.net, yolo_detections, dnndata.class_list);
-                
-                
-                // remove the ratio/size shit totally and just rely on yolo for classification
-                // problem: probably generates multiple detections
-                // need to deconflict between multiple/overlapping tracks (or just print them all)
-                // can lower update pings required for higher confidence
-                // remember: make detection trackbox the new trackbox, not the contour boundingRect
                 
                 if (updates>=25 and confidence<4 and classification!="UNKNOWN") {confidence = 4;}
                 else if (updates >= 15 and confidence<3) {confidence = 3;}

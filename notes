@@ -11,19 +11,6 @@ g++ ledcontroller.cpp -o ledcontroller -lconfig++ -lfmt -I/usr/include/opencv4  
 
 for dnn: g++ -Ofast cpp/yolo.cpp -o yolo_example `pkg-config --cflags --libs opencv4`
 
-- FIX THE FUCKING SCALING
-- FIX THE FUCKING SCALING
-- FIX THE FUCKING SCALING
-- FIX THE FUCKING SCALING
-- FIX THE FUCKING SCALING
-- FIX THE FUCKING SCALING
-- FIX THE FUCKING SCALING
-- FIX THE FUCKING SCALING
-- FIX THE FUCKING SCALING
-- FIX THE FUCKING SCALING
-- FIX THE FUCKING SCALING
-- FIX THE FUCKING SCALING
-- FIX THE FUCKING SCALING
-- FIX THE FUCKING SCALING
-- FIX THE FUCKING SCALING
-- FIX THE FUCKING SCALING
+
+yolo:
+detection returns box from scan_area
