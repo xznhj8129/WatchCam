@@ -28,13 +28,15 @@ namespace TrackObjectClass {
             int confidence;
             double wavg;
             double havg;
+            double size;
+            double ratio;
             double vel;
             vector<double> wavgs;
             vector<double> havgs;
+            vector<double> sizes;
             vector<double> vels;
+            vector<double> ratios;
             bool initialized = false;
-            std::vector<std::string> class_list;
-            cv::dnn::Net net;
             
             void track_init(Contour contour, CamConfig& camvars) {
                 initialized = true;
@@ -53,6 +55,9 @@ namespace TrackObjectClass {
                 vels.push_back(0);
                 updates = 1;
                 confidence = 0;
+                sizes.push_back(contourArea(contour));
+                ratio = 0;
+                ratios.push_back((double)rect.width / rect.height);
             };
             
             void update(Contour contour, CamConfig& camvars) {
@@ -70,7 +75,11 @@ namespace TrackObjectClass {
                 arect.y = center.y - (havg/2);
                 arect.width = wavg;
                 arect.height = havg;
+                sizes.push_back(contourArea(contour));
+                ratios.push_back((double)rect.width / rect.height);
                 vel = round(vectorAverage(vels));
+                size = round(vectorAverage(sizes));
+                ratio = round((vectorAverage(ratios)*100)/100);
                 updates = updates + 1;
                 
                 if (updates>=25 and confidence<4 and classification!="UNKNOWN") {confidence = 4;}
@@ -79,8 +88,8 @@ namespace TrackObjectClass {
                 else if (updates > 4 and confidence==0) {confidence = 1;}
                 
                 if (confidence >= 3) {
-                    if ( classification == "CHANGE ME") {classification = "VEHICLE";}
-                    else if (classification == "CHANGE ME") { classification = "PERSON";}
+                    if ((rect.height < rect.width)  and size > 800) {classification = "VEHICLE";}
+                    else if ((rect.height > rect.width) and size < 800 and size > 100 /*and vel < 25*/) { classification = "PERSON";}
                     else {classification = "UNKNOWN";}
                     
                     if (classification == "UNKNOWN" and confidence == 4) {confidence = 3;}
@@ -88,6 +97,8 @@ namespace TrackObjectClass {
                 
                 if (wavgs.size() > 30) {pop_front(wavgs);}
                 if (havgs.size() > 30) {pop_front(havgs);}
+                if (sizes.size() > 30) {pop_front(sizes);}
+                if (ratios.size() > 30) {pop_front(ratios);}
                 
             };
     };

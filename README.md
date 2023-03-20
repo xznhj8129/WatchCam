@@ -19,14 +19,13 @@ Important variables for motion algorithm:
 - PySerial (to be dropped)
 
 ### TODO
-- HD picture dynamic scaling
 - Better track discrimination
 - Track reacquisition
 - C++ Arduino controller
 - Alert sound playing
 - ffmpeg HD recording with FTP server upload
 - Windows support
-- YoloV5 DNN object detection
+- YoloV5 DNN object detection (v2.0)
 
 ### Added
 - Mousewheel image zoom
