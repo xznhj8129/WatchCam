@@ -19,8 +19,6 @@ Important variables for motion algorithm:
 - PySerial (to be dropped)
 
 ### TODO
-- FIX THE FUCKING SCALING
-- Adding rectangle select motion zone
 - HD picture dynamic scaling
 - Better track discrimination
 - Track reacquisition
@@ -31,3 +29,4 @@ Important variables for motion algorithm:
 
 ### Added
 - Mousewheel image zoom
+- Motion zone mouse select

@@ -74,8 +74,8 @@ namespace CamFunctions {
         int X;
         int Y;
         if (zone.width > 0) {
-            X = (( x + zone.x) * md_scale);
-            Y = (( y + zone.y) * md_scale);
+            X = ( x * md_scale) + zone.x;
+            Y = ( y * md_scale) + zone.y;
         } 
         else {
             X = (x * md_scale);
@@ -93,8 +93,8 @@ namespace CamFunctions {
         int X;
         int Y;
         if (zone.height > 0 and zone.width > 0) {
-            X = (( x + zone.x) * md_scale);
-            Y = (( y + zone.y) * md_scale);
+            X = ( x * md_scale) + zone.x;
+            Y = ( y * md_scale) + zone.y;
         } 
         else {
             X = (x * md_scale);
@@ -102,6 +102,10 @@ namespace CamFunctions {
         }
         int W = w * md_scale;
         int H = h * md_scale;
+        if (X<0) {X=0;}
+        if (Y<0) {Y=0;}
+        if (W<0) {W=0;}
+        if (H<0) {H=0;}
         cv::Rect ret(X,Y,W,H);
         return ret;
     }
@@ -114,8 +118,8 @@ namespace CamFunctions {
         double X;
         double Y;
         if (zone.height > 0 and zone.width > 0) {
-            X = (( x + zone.x) * md_scale);
-            Y = (( y + zone.y) * md_scale);
+            X = ( x * md_scale) + zone.x;
+            Y = ( y * md_scale) + zone.y;
         } 
         else {
             X = (x * md_scale);

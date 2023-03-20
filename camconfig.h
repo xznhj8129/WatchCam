@@ -27,11 +27,9 @@ namespace CamConfigClass {
             int motion_frames_min;
             double md_scale;
             double calibration_t;
-            bool resize_display;
             bool serial_alert;
             string serial_device;
             cv::Size windowres;
-            cv::Size motionimgres;
             cv::Rect zone;
             string cam_urls[8];
             cv::Rect cam_zones[8];
@@ -67,7 +65,6 @@ namespace CamConfigClass {
                     motion_frames_min = config.lookup("motion_frames_min");
                     md_scale = config.lookup("md_scale");
                     calibration_t = config.lookup("calibration_t");
-                    resize_display = config.lookup("resize_display");
                     serial_alert = config.lookup("serial_alert");
                     serial_device = config.lookup("serial_device").c_str();
             
@@ -78,8 +75,6 @@ namespace CamConfigClass {
 
                     windowres.width = config.lookup("windowres")[0];
                     windowres.height = config.lookup("windowres")[1];
-                    motionimgres.width = config.lookup("motionimgres")[0];
-                    motionimgres.height = config.lookup("motionimgres")[1];
                     zone.x = config.lookup("zone")[0];
                     zone.y = config.lookup("zone")[1];
                     zone.width = config.lookup("zone")[2];

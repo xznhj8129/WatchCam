@@ -35,14 +35,14 @@ int main(int argc, char* argv[]) {
     bool motion_notif = false;
     bool playalert = false;
     bool exclude_mode = false;
-    int motiontime;
-    int timeplay;
+    int motiontime = 0;
+    int timeplay = 0;
     string alerttrack;
     string vidtime;
     int tracked;
-    int tracks_n;
-    int led;
-    int maxconf;
+    int tracks_n = 0;
+    int led = 1;
+    int maxconf = 0;
     cv::Mat frame1;
     cv::Mat frame2;
     cv::Mat feed;
@@ -50,9 +50,6 @@ int main(int argc, char* argv[]) {
     cv::VideoCapture cap;
     CamConfig camvars;
     DNNdata dnndata;
-    Rect motionzone;
-    
-    // 2560 * 1920
     
     cout << "WatchCam " << v << " started " << timestamp() << endl;
     
@@ -81,38 +78,43 @@ int main(int argc, char* argv[]) {
         unsigned last = camvars.internet_cam_url.find("/h264");
         string url = camvars.internet_cam_url.substr (first+1,camvars.internet_cam_url.length());
         string ip = camvars.internet_cam_url.substr (first+1,last-first-1);
+        
+        // window_scale
+        cv::Size windowsize;
+        windowsize.width = camvars.windowres.width;
+        windowsize.height = camvars.windowres.height;
+        const int frame_width = cap.get(cv::CAP_PROP_FRAME_WIDTH);
+        const int frame_height = cap.get(cv::CAP_PROP_FRAME_HEIGHT);
+        
+        // sd = 640 * 480
+        // hd = 2560 * 1920
+        bool hd_image = frame_width > 640;
+        if (hd_image) {
+            camvars.md_scale = camvars.md_scale / 4;
+        }
+
+        // processing_scale
+        cv::Size new_size;
+        new_size.width = camvars.windowres.width / camvars.md_scale;
+        new_size.height= camvars.windowres.height / camvars.md_scale;
+        cout << "newsize " << new_size << endl;
+        
         string windowname = fmt::format("WatchCam Feed Cam {} - {}",cam_id,ip);
         cv::namedWindow(windowname, cv::WINDOW_GUI_NORMAL);
         cv::setMouseCallback(windowname, onMouse, NULL);
-        
-        // no cv::RectSelector???
-        
-        const int frame_width = cap.get(cv::CAP_PROP_FRAME_WIDTH);
-        const int frame_height = cap.get(cv::CAP_PROP_FRAME_HEIGHT);
-        notif(fmt::format("Frame width: {} Frame height: {}",frame_width,frame_height),cam_id);
-        if (camvars.resize_display) {cv::resizeWindow(windowname, camvars.windowres.width, camvars.windowres.height);}
-        else {cv::resizeWindow(windowname, frame_width, frame_height);}
-        int md_scale_width = frame_width / camvars.motionimgres.width;
-        int md_scale_height = frame_height / camvars.motionimgres.height;
-        if (md_scale_width == md_scale_height) {camvars.md_scale = md_scale_width;}
-        
-        bool big_image = frame_width > 640;
-        
-        int new_width = frame_width / camvars.md_scale;
-        int new_height = frame_height / camvars.md_scale;
-        
-        cv::Size new_size;
-        new_size.width = new_width; // resize size
-        new_size.height= new_height;
+        notif(fmt::format("Cam resolution {} x {}",frame_width,frame_height),cam_id);
+        cv::resizeWindow(windowname, camvars.windowres.width, camvars.windowres.height);
         
         sel_start_point.x = camvars.zone.x;
         sel_start_point.y = camvars.zone.y;
-        sel_end_point.x = camvars.zone.width;
-        sel_end_point.y = camvars.zone.height;
-        motionzone.x = camvars.zone.x / camvars.md_scale;
-        motionzone.y = camvars.zone.y / camvars.md_scale;
-        motionzone.width = camvars.zone.width / camvars.md_scale;
-        motionzone.height = camvars.zone.height / camvars.md_scale;
+        sel_end_point.x = camvars.zone.x + camvars.zone.width;
+        sel_end_point.y = camvars.zone.y + camvars.zone.height;
+        
+        //camvars.zone = scale_rect(camvars.zone,
+        //camvars.zone.x = camvars.zone.x;
+        //camvars.zone.y = camvars.zone.y;
+        //camvars.zone.x = camvars.zone.x + camvars.zone.width;
+        //camvars.zone.y = camvars.zone.y + camvars.zone.height;
         
         bool is_cuda = camvars.use_cuda;
         
@@ -123,10 +125,14 @@ int main(int argc, char* argv[]) {
         
         TrackObject tracks[32];
         
-        int t;
+        int t = 0;
         int rt = time(0);
         cap >> frame1;
         cap >> frame2;
+
+        cv::resize(frame1, frame1, windowsize, 0, 0, cv::INTER_AREA);
+        cv::resize(frame2, frame2, windowsize, 0, 0, cv::INTER_AREA);
+        
         feed = frame1.clone();
         
         notif(fmt::format("Source: {}",url), cam_id);
@@ -144,15 +150,15 @@ int main(int argc, char* argv[]) {
             cv::resize(frame1, p1, new_size, 0, 0, cv::INTER_AREA); // resize here
             cv::resize(frame2, p2, new_size, 0, 0, cv::INTER_AREA);
             
-            if (motionzone.height!=0 and motionzone.width!=0) { // crop shots to detection zone
-                Rect motionzone_resized;
-                motionzone_resized.x = camvars.zone.x / camvars.md_scale;
-                motionzone_resized.y = camvars.zone.y / camvars.md_scale;
-                motionzone_resized.width = camvars.zone.width / camvars.md_scale;
-                motionzone_resized.height = camvars.zone.height / camvars.md_scale;
-                //cout << motionzone_resized <<endl;
-                p1 = p1(motionzone_resized);
-                p2 = p2(motionzone_resized);
+            if (camvars.zone.height!=0 and camvars.zone.width!=0) { // crop shots to detection zone
+                Rect zone_resized;
+                zone_resized.x = camvars.zone.x / camvars.md_scale;
+                zone_resized.y = camvars.zone.y / camvars.md_scale;
+                zone_resized.width = camvars.zone.width / camvars.md_scale;
+                zone_resized.height = camvars.zone.height / camvars.md_scale;
+                //cout << "resized " << camvars.zone_resized <<endl;
+                p1 = p1(zone_resized); //works perfectly, it's the rest that doesn't
+                p2 = p2(zone_resized);
             }
             
             absdiff(p1,p2, diff);
@@ -163,20 +169,14 @@ int main(int argc, char* argv[]) {
             findContours( dilated, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);//, cv::Point(0, 0) );
             
             if (calibrated) {
-                
                 for (const Contour &contour : contours) {
                     int csize = contourArea(contour);
                     if (csize >= camvars.min_contour_size) {
                         cv::Rect rect = cv::boundingRect(contour);
-                        //cv::Mat motionzone = 
-                        //int x = rect.x;
-                        //int y = rect.y;
-                        //int w = rect.width;
-                        //int h = rect.height;
                         cv::Point center = find_center(rect, camvars.md_scale, camvars.zone);
                         cv::Rect scaled_rect = scale_rect(rect, camvars.md_scale, camvars.zone); // life sized
                         
-                        //rectangle(feed, cv::Point(x*md_scale,y*md_scale), cv::Point((x+w)*md_scale,(y+h)*md_scale), cv::Scalar(0, 255, 0), 1);
+                        //rectangle(feed, cv::Point(x* camvars.md_scale,y*camvars.md_scale), cv::Point((x+w)*camvars.md_scale,(y+h)*camvars.md_scale), cv::Scalar(0, 255, 0), 1);
                         //circle(feed, center, 1, cv::Scalar(0, 255, 0), 2);   
                         
                         tracked = 0;
@@ -253,9 +253,24 @@ int main(int argc, char* argv[]) {
                             rsize = 2;
                         }
                         
-                        rectangle(feed, cv::Point(x,y), cv::Point(x+w, y+h), color, rsize);
-                        cv::putText(feed, id, cv::Point(x, y-1), cv::FONT_HERSHEY_PLAIN, 1, color, 1);
-                        cv::putText(feed, tracking[id].classification, cv::Point(x, y+h+11), cv::FONT_HERSHEY_PLAIN, 1, color, 1);
+                        //rectangle(feed, cv::Point(x,y), cv::Point(x+w, y+h), color, rsize);
+                        //cv::putText(feed, id, cv::Point(x, y-1), cv::FONT_HERSHEY_PLAIN, 1, color, 1);
+                        //cv::putText(feed, tracking[id].classification, cv::Point(x, y+h+11), cv::FONT_HERSHEY_PLAIN, 1, color, 1);
+                        
+                        int detections = tracking[id].yolo_detections.size();
+
+                        for (int i = 0; i < detections; ++i)
+                        {
+
+                            auto detection = tracking[id].yolo_detections[i];
+                            auto box = detection.box;
+                            auto classId = detection.class_id;
+                            const auto color = colors[classId % colors.size()];
+                            cv::rectangle(feed, box, color, 1);
+                            cv::rectangle(feed, cv::Point(box.x, box.y - 20), cv::Point(box.x + box.width, box.y), color, cv::FILLED);
+                            cv::putText(feed, class_list[classId].c_str(), cv::Point(box.x, box.y - 5), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 0));
+                        }
+                        
                         //circle(feed, tracking[id].center, 1, ccolor, 2);   
                     }
                     
@@ -286,7 +301,6 @@ int main(int argc, char* argv[]) {
                             erasethese.push_back(id2);
                         }
                     };
-                    
                 };
 
                 for (const string id : erasethese) {
@@ -302,7 +316,7 @@ int main(int argc, char* argv[]) {
             }
             
             if (camvars.serial_alert) {
-                cv::putText(feed, "A", cv::Point(int(frame_width*0.95), int(frame_height*0.975)), cv::FONT_HERSHEY_PLAIN, 2, cv::Scalar(0,255,0), 2);
+                cv::putText(feed, "A", cv::Point(int(windowsize.width*0.95), int(windowsize.height*0.975)), cv::FONT_HERSHEY_PLAIN, 2, cv::Scalar(0,255,0), 2);
                 if (maxconf<=1 and led!=1) {
                     led = 1;
                     WriteTextFile(".led",fmt::format("1:{}",cam_id));
@@ -350,23 +364,21 @@ int main(int argc, char* argv[]) {
                 cv::Scalar reccolor;
                 if (recording) {reccolor = cv::Scalar(0,0,255);}
                 else {reccolor = cv::Scalar(0,255,0);}
-                cv::putText(feed, "RECORD", cv::Point(int(frame_width*0.01), int(frame_height*0.89)), cv::FONT_HERSHEY_PLAIN, 2, reccolor, 2);
+                cv::putText(feed, "RECORD", cv::Point(int(windowsize.width*0.01), int(windowsize.height*0.89)), cv::FONT_HERSHEY_PLAIN, 2, reccolor, 2);
             }
             
             if (vid_motion) {
-                cv::putText(feed, "MOTION", cv::Point(int(frame_width*0.01), int(frame_height*0.1)), cv::FONT_HERSHEY_SIMPLEX, 2, cv::Scalar(0,0,255), 2);
+                cv::putText(feed, "MOTION", cv::Point(int(windowsize.width*0.01), int(windowsize.height*0.1)), cv::FONT_HERSHEY_SIMPLEX, 2, cv::Scalar(0,0,255), 2);
             }
             
             if (camvars.alert_sound) {
-                cv::putText(feed, "SOUND", cv::Point(int(frame_width*0.01), int(frame_height*0.95)), cv::FONT_HERSHEY_SIMPLEX, 2, cv::Scalar(0,255,0), 2);
+                cv::putText(feed, "SOUND", cv::Point(int(windowsize.width*0.01), int(windowsize.height*0.95)), cv::FONT_HERSHEY_SIMPLEX, 2, cv::Scalar(0,255,0), 2);
             }
-            
-            
             
             // Motion zone
             if (camvars.zone.width != 0) {
 
-                cout << "main " << motionzone.x << " " << motionzone.y << " " << motionzone.width << " " << motionzone.height << endl;
+                //cout << "main " << camvars.zone.x << " " << camvars.zone.y << " " << camvars.zone.width << " " << camvars.zone.height << endl;
                 //rectangle(feed, cv::Point(camvars.zone.x * camvars.md_scale, camvars.zone.y * camvars.md_scale), 
                 //                cv::Point((camvars.zone.x + camvars.zone.width) * camvars.md_scale, (camvars.zone.y + camvars.zone.height) * camvars.md_scale), 
                 
@@ -376,18 +388,17 @@ int main(int argc, char* argv[]) {
                                     cv::Scalar(0,0,255), 2);
                 }
                 else {
-                    rectangle(feed, cv::Point(motionzone.x * camvars.md_scale, motionzone.y * camvars.md_scale), 
-                                    cv::Point(motionzone.width * camvars.md_scale, motionzone.height * camvars.md_scale) ,
+                    if (zone_updated) {
+                        camvars.zone = sel_rect;
+                    }
+                    rectangle(feed, cv::Point(camvars.zone.x, camvars.zone.y ), 
+                                    cv::Point(camvars.zone.x+camvars.zone.width, camvars.zone.y+camvars.zone.height) ,
                                     cv::Scalar(0,0,255), 2);
                 }
             }
             
-            if (camvars.resize_display) { // apply AFTER motion zone rect
-                cv::Size newwinsize;
-                newwinsize.width = camvars.windowres.width;
-                newwinsize.height = camvars.windowres.height;
-                cv::resize(feed, feed, newwinsize, 0, 0, cv::INTER_AREA);
-            }
+            // apply AFTER motion zone rect (wait a min)
+            //cv::resize(feed, feed, windowsize, 0, 0, cv::INTER_AREA);
             
             // update window
             vidtime = timestamp();
@@ -413,10 +424,10 @@ int main(int argc, char* argv[]) {
                 }
             } 
             if (c == 99) {  //c
-                motionzone.x = 0;
-                motionzone.y = 0;
-                motionzone.height = 0;
-                motionzone.width = 0;
+                camvars.zone.x = 0;
+                camvars.zone.y = 0;
+                camvars.zone.height = 0;
+                camvars.zone.width = 0;
             }
             if (c==101) { //e
                 if (not exclude_mode) {exclude_mode = true;}
@@ -438,6 +449,8 @@ int main(int argc, char* argv[]) {
             // next frame
             frame2 = frame1.clone();
             cap >> frame1;
+            // apply AFTER motion zone rect (wait a min)
+            cv::resize(frame1, frame1, windowsize, 0, 0, cv::INTER_AREA);
             feed = frame1.clone();
             
             t = time(0);

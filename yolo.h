@@ -60,6 +60,7 @@ namespace YoloDNNObjs {
         int class_id;
         float confidence;
         cv::Rect box;
+        string classification;
     };
 
     struct DNNdata
@@ -68,7 +69,7 @@ namespace YoloDNNObjs {
         std::vector<std::string> class_list;
     };
 
-    void detect(cv::Mat &image, cv::dnn::Net &net, std::vector<Detection> &output, const std::vector<std::string> &className) {
+    void detect(cv::Mat &image, cv::dnn::Net &net, std::vector<Detection> &output, const std::vector<std::string> &className, cv::Rect scan_rect) {
         cv::Mat blob;
 
         auto input_image = format_yolov5(image);
@@ -83,7 +84,7 @@ namespace YoloDNNObjs {
         
         float *data = (float *)outputs[0].data;
 
-        const int dimensions = 85;
+        //const int dimensions = 85;
         const int rows = 25200;
         
         std::vector<int> class_ids;
@@ -114,7 +115,7 @@ namespace YoloDNNObjs {
                     int top = int((y - 0.5 * h) * y_factor);
                     int width = int(w * x_factor);
                     int height = int(h * y_factor);
-                    boxes.push_back(cv::Rect(left, top, width, height));
+                    boxes.push_back(cv::Rect(scan_rect.x + left, scan_rect.y + top, width, height));
                 }
 
             }
@@ -125,35 +126,35 @@ namespace YoloDNNObjs {
 
         std::vector<int> nms_result;
         cv::dnn::NMSBoxes(boxes, confidences, SCORE_THRESHOLD, NMS_THRESHOLD, nms_result);
-        for (int i = 0; i < nms_result.size(); i++) {
+        for (long unsigned int i = 0; i < nms_result.size(); i++) {
             int idx = nms_result[i];
             Detection result;
             result.class_id = class_ids[idx];
+            result.classification = className[class_ids[idx]].c_str();
             result.confidence = confidences[idx];
             result.box = boxes[idx];
             output.push_back(result);
         }
     }
 
-
-
-    /*std::vector<Detection> yolo_scan(cv::Mat frame, std::vector<std::string> class_list, cv::dnn::Net net) {
+    struct Detection yolo_scan(cv::Mat frame, std::vector<std::string> class_list, cv::dnn::Net net, cv::Rect scan_rect) {
         std::vector<Detection> output;
-        detect(frame, net, output, class_list);
-
+        detect(frame, net, output, class_list, scan_rect);
         int detections = output.size();
-
+        
+        float max = 0;
+        Detection winner;
         for (int i = 0; i < detections; ++i)
         {
-            auto detection = output[i];
-            auto box = detection.box;
-            auto classId = detection.class_id;
-            const auto color = colors[classId % colors.size()];
-            cv::rectangle(frame, box, color, 1);
-            cv::rectangle(frame, cv::Point(box.x, box.y - 20), cv::Point(box.x + box.width, box.y), color, cv::FILLED);
-            cv::putText(frame, class_list[classId].c_str(), cv::Point(box.x, box.y - 5), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 0, 0));
+            if (output[i].confidence > max) {
+                max = output[i].confidence;
+                winner = output[i];
+            }
         }
-        return output;
-    }*/
+        
+        winner.classification = class_list[winner.class_id].c_str();
+        
+        return winner;
+    }
 }
 #endif

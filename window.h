@@ -16,6 +16,8 @@ namespace WindowClass {
     bool sel_drawing = false;
     Point sel_start_point, sel_end_point;
     Rect sel_rect;
+    int mousemoves;
+    bool zone_updated;
 
     void onMouse(int event, int x, int y, int flags, void* userdata) {
         
@@ -24,7 +26,8 @@ namespace WindowClass {
             mousePos.y = y;
             if (sel_drawing) {
                 sel_end_point = Point(x, y);
-                cout << sel_start_point << " " << sel_end_point << endl;
+                //cout << sel_start_point << " " << sel_end_point << endl;
+                mousemoves+=1;
             }
             
         } else if (event == 10 && flags>0) {
@@ -37,19 +40,33 @@ namespace WindowClass {
         } else if (event == EVENT_LBUTTONDOWN) {
             sel_drawing = true;
             sel_start_point = Point(x, y);
-            cout << "drawing" << endl;
+            mousemoves = 0;
             
         } else if (event == EVENT_LBUTTONUP) {
             if (sel_drawing) {
                 sel_drawing = false;
-                sel_end_point = Point(x, y);
-                cout << "endpoint" << sel_end_point.x << " " << sel_end_point.y << endl;
-                
-                sel_rect.x = sel_start_point.x;
-                sel_rect.y = sel_start_point.y;
-                sel_rect.width = sel_end_point.x - sel_start_point.x;
-                sel_rect.height = sel_end_point.y - sel_start_point.y;
-                cout << "event " << sel_rect.x << " " << sel_rect.y << " " << sel_rect.width << " " << sel_rect.height << endl;
+                if (mousemoves>=2) {
+                    sel_end_point = Point(x, y);
+                    
+                    if (sel_end_point.x < sel_start_point.x) {
+                        sel_rect.x = sel_end_point.x;
+                        sel_rect.width = sel_start_point.x - sel_end_point.x;
+                    } else {
+                        sel_rect.x = sel_start_point.x;
+                        sel_rect.width = sel_end_point.x - sel_start_point.x;
+                    }
+                    
+                    if (sel_end_point.y < sel_start_point.y) {
+                        sel_rect.y = sel_end_point.y;
+                        sel_rect.height = sel_start_point.y - sel_end_point.y;
+                    } else {
+                        sel_rect.y = sel_start_point.y;
+                        sel_rect.height = sel_end_point.y - sel_start_point.y;
+                    }
+                    
+                    //cout << "sel_rect " << sel_rect.x << " " << sel_rect.y << " " << sel_rect.width << " " << sel_rect.height << endl;
+                    zone_updated = true;
+                }
             }
         }
     }

@@ -76,8 +76,30 @@ namespace TrackObjectClass {
                 vel = round(vectorAverage(vels));
                 updates = updates + 1;
                 
-                //detect(feed, dnndata.net, yolo_detections, dnndata.class_list);
+                cv::Mat scan_pic;
+                cv::Rect scan_rect = cv::Rect(arect.x - (arect.width/ 4), arect.y - (arect.height /4), arect.width*1.5, arect.height*1.5);
+                scan_pic = feed.clone();
+                scan_pic = scan_pic(scan_rect);
+                imshow("scan",scan_pic);
+                //getchar();
+                yolo_detections.clear();
+                detect(scan_pic, dnndata.net, yolo_detections, dnndata.class_list, scan_rect);
                 
+                int detections = yolo_detections.size();
+
+                float maxconf = 0;
+                for (int i = 0; i < detections; ++i)
+                {
+                    auto detection = yolo_detections[i];
+                    auto box = detection.box;
+                    auto classId = detection.class_id;
+                    auto yolo_confidence = detection.confidence;
+                    auto yolo_class = detection.classification;
+                    if (yolo_confidence > maxconf) {
+                        maxconf = yolo_confidence;
+                        classification = yolo_class;
+                    }
+                }
                 
                 // remove the ratio/size shit totally and just rely on yolo for classification
                 // problem: probably generates multiple detections
@@ -91,10 +113,6 @@ namespace TrackObjectClass {
                 else if (updates > 4 and confidence==0) {confidence = 1;}
                 
                 if (confidence >= 3) {
-                    if ( classification == "CHANGE ME") {classification = "VEHICLE";}
-                    else if (classification == "CHANGE ME") { classification = "PERSON";}
-                    else {classification = "UNKNOWN";}
-                    
                     if (classification == "UNKNOWN" and confidence == 4) {confidence = 3;}
                 }
                 
